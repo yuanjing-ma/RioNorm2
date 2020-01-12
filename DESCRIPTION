@@ -1,0 +1,14 @@
+Package: RioNorm2
+Title: A Novel Normalization and Differential Abundance Test Framework for Microbiome Data
+Version: 0.1
+Authors@R: 
+    person(given = "Yuanjing",
+           family = "Ma",
+           role = c("aut", "cre"),
+           email = "yuanjingma2020@u.northwestern.com",
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+Description: We develop a novel framework for differential abundance analysis on sparse high-dimensional marker gene microbiome data. Our methodology relies on a novel network-based normalization technique and a two stage zero-inflated mixture count regression model (RioNorm2). Our normalization method aims to find a group of relatively invariant microbiome species across samples and conditions in order to construct the size factor. Another contribution of the paper is that our testing approach can take under- sampling and over-dispersion into consideration by separating microbiome species into two groups and model them separately.
+License: What license it uses
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.1.1

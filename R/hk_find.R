@@ -25,13 +25,15 @@ hk_find <- function(OTU_table, min_avg_counts = 5){
   OTU_ID = rownames(hk_pool)
   # create symmetric distance matrix between selected OTUs
   ratio_var = matrix(0, nrow = nOTUs, ncol = nOTUs)
-  for (i in 1:nOTUs){
-    for (j in 1:nOTUs){
-      mul = (hk_pool[i,]*hk_pool[j,])
+  for (i in 1:(nOTUs-1)) {
+    for (j in (i+1):nOTUs) {
+      mul = (hk_pool[i,] * hk_pool[j,])
       ind = unname(unlist(mul)) != 0
-      ratio_var[i,j] = var(unlist(log(hk_pool[i,][ind]/hk_pool[j,][ind])))
+      ratio_var[i, j] = var(unlist(log(hk_pool[i, ][ind]/hk_pool[j,  ][ind])))
+      ratio_var[j, 1] <- ratio_var[i, j]
     }
   }
+
   ratio_var[lower.tri(ratio_var, diag = TRUE)] <- 0
   dist = ratio_var[ratio_var > 0]
   
@@ -100,10 +102,8 @@ hk_find <- function(OTU_table, min_avg_counts = 5){
     if (dim(updated_cliques)[1] == 1) {
       riOTUs = prev_largest_cliques
       break
-    } else if (q == length(quans) & dim(updated_cliques)[1] == 2) {
-      riOTUs = matrix(updated_cliques[-1,], nrow = 1)
-      break 
-    } else if (dim(updated_cliques)[1] == 2) {
+    }  
+    else if (dim(updated_cliques)[1] == 2) {
       prev_largest_cliques = matrix(updated_cliques[-1,], nrow = 1)
       prev_length = dim(prev_largest_cliques)[2]
     } else{

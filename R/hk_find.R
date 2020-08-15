@@ -8,112 +8,135 @@
 #' @keywords normalization
 #' @export
 #' @examples
-hk_find <- function(OTU_table, min_avg_counts = 5){
-  # output:
-  # A list of riOTUs' id and size factor used for normalization
-  # result = hk_find(OTU_table, min_avg_counts)
-  # riOTUs_id = result$riOTUs_ID
-  # size_factor = result$size_factor
-  
+
+hk_find <- function (OTU_table, min_avg_counts = 5) 
+{
   nsamples = dim(OTU_table)[2]
   samobs = apply(OTU_table, 1, function(x) sum(x != 0))
-  hk_pool = OTU_table[samobs >= nsamples * 0.8,]
+  hk_pool = OTU_table[samobs >= nsamples * 0.8, ]
   avg_count = apply(hk_pool, 1, mean)
-  hk_pool = hk_pool[avg_count >= min_avg_counts,]
-    
+  hk_pool = hk_pool[avg_count >= min_avg_counts, ]
   nOTUs = dim(hk_pool)[1]
   OTU_ID = rownames(hk_pool)
-  # create symmetric distance matrix between selected OTUs
   ratio_var = matrix(0, nrow = nOTUs, ncol = nOTUs)
-  for (i in 1:(nOTUs-1)) {
-    for (j in (i+1):nOTUs) {
-      mul = (hk_pool[i,] * hk_pool[j,])
+  for (i in 1:(nOTUs - 1)) {
+    for (j in (i + 1):nOTUs) {
+      mul = (hk_pool[i, ] * hk_pool[j, ])
       ind = unname(unlist(mul)) != 0
-      ratio_var[i, j] = var(unlist(log(hk_pool[i, ][ind]/hk_pool[j,  ][ind])))
+      ratio_var[i, j] = var(unlist(log(hk_pool[i, ][ind]/hk_pool[j, ][ind])))
       ratio_var[j, 1] <- ratio_var[i, j]
     }
   }
-
   ratio_var[lower.tri(ratio_var, diag = TRUE)] <- 0
   dist = ratio_var[ratio_var > 0]
-  
   First = TRUE
   library(igraph)
-  quans = seq(0.01,0.1,0.005)
-  for (q in 1:length(quans)){
+  
+  quans = seq(0.01, 0.1, 0.005)
+  
+  for (q in 1:length(quans)) {
     print(q)
+    FindIndex <- length(quans)    #the largest one
     nodes = data.frame(seq(1, nOTUs, 1), OTU_ID)
-    colnames(nodes) = c("order","OTU_ID")
-    # Build links dataset
-    links = matrix(0, nrow = 1, ncol=3)
-    dist = ratio_var[ratio_var>0]
+    colnames(nodes) = c("order", "OTU_ID")
+    links = matrix(0, nrow = 1, ncol = 3)
+    dist = ratio_var[ratio_var > 0]
     h = quantile(dist, probs = quans[q])
-    order = seq(1,nOTUs,1)
-    for (i in 1:dim(ratio_var)[1]){
-      check = ratio_var[i,]
+    order = seq(1, nOTUs, 1)
+    for (i in 1:dim(ratio_var)[1]) {
+      check = ratio_var[i, ]
       ind = order[check < h & check > 0]
-      if (length(ind)>0){
+      if (length(ind) > 0) {
         dist = check[ind]
-        rep = replicate(length(ind),i)
-        record = cbind(rep,ind,dist)
-        links = rbind(links,record)
+        rep = replicate(length(ind), i)
+        record = cbind(rep, ind, dist)
+        links = rbind(links, record)
       }
     }
-    links = links[-1,]
     
-    # plot the network
-    net <- graph_from_data_frame(d=links, vertices=nodes, directed=F)
+    if (dim(links)[1] > 3)
+    {
+      FindIndex = q
+      break
+    }
+  }
+  
+riOTUs <- NA
+
+  for (q in FindIndex:length(quans)) {
+    print(q)
+    nodes = data.frame(seq(1, nOTUs, 1), OTU_ID)
+    colnames(nodes) = c("order", "OTU_ID")
+    links = matrix(0, nrow = 1, ncol = 3)
+    dist = ratio_var[ratio_var > 0]
+    h = quantile(dist, probs = quans[q])
+    order = seq(1, nOTUs, 1)
+    for (i in 1:dim(ratio_var)[1]) {
+      check = ratio_var[i, ]
+      ind = order[check < h & check > 0]
+      if (length(ind) > 0) {
+        dist = check[ind]
+        rep = replicate(length(ind), i)
+        record = cbind(rep, ind, dist)
+        links = rbind(links, record)
+      }
+    }
     
-    # Find cliques
-    list_cliques = cliques(net) 
-    clique_size = sapply(list_cliques, length) 
-    curr_largest_cliques = largest_cliques(net) 
+    links = links[-1, ]
+    net <- graph_from_data_frame(d = links, vertices = nodes, directed = F)
+    list_cliques = cliques(net)
+    clique_size = sapply(list_cliques, length)
+    curr_largest_cliques = largest_cliques(net)
     curr_length = length(curr_largest_cliques[[1]])
     curr_largest_cliques = matrix(unlist(curr_largest_cliques), ncol = curr_length, byrow = T)
-    
     if (curr_length < 3) {
       next
     }
-    
     if (First == TRUE) {
       prev_largest_cliques = curr_largest_cliques
       prev_length = dim(prev_largest_cliques)[2]
       First = FALSE
       next
     }
-    
-    if (curr_length == prev_length){
+    if (curr_length == prev_length) {
       riOTUs = prev_largest_cliques
-      break  
+      break
     }
-    
     print(prev_largest_cliques)
     print(curr_largest_cliques)
     updated_cliques = matrix(0, nrow = 1, ncol = curr_length)
     for (i in 1:dim(curr_largest_cliques)[1]) {
       for (j in 1:dim(prev_largest_cliques)[1]) {
-        if (sum(prev_largest_cliques[j,] %in% curr_largest_cliques[i,]) == prev_length) {
-          updated_cliques = rbind(updated_cliques, curr_largest_cliques[i,])
+        if (sum(prev_largest_cliques[j, ] %in% curr_largest_cliques[i, ]) == prev_length) {
+          updated_cliques = rbind(updated_cliques, curr_largest_cliques[i, ])
           break
         }
       }
     }
-    
     if (dim(updated_cliques)[1] == 1) {
       riOTUs = prev_largest_cliques
       break
-    }  
+    }
     else if (dim(updated_cliques)[1] == 2) {
-      prev_largest_cliques = matrix(updated_cliques[-1,], nrow = 1)
+      prev_largest_cliques = matrix(updated_cliques[-1, ], nrow = 1)
       prev_length = dim(prev_largest_cliques)[2]
-    } else{
-      prev_largest_cliques = updated_cliques[-1,]
+    }
+    else {
+      prev_largest_cliques = updated_cliques[-1, ]
       prev_length = dim(prev_largest_cliques)[2]
     }
   }
-  riOTUs = riOTUs[order(riOTUs)]
+
+if(length (riOTUs) == 1)
+ {print ("No riOTUs are identified at 10th percentile")}
+  
+ if(length(riOTUs) > 1)
+  {
+  riOTUs = riOTUs[order(unique(riOTUs))]
+  #riOTUs = riOTUs[order(riOTUs)]
   riOTUs_ID = rownames(hk_pool)[riOTUs]
-  riOTUs_count = hk_pool[riOTUs,]
+  riOTUs_count = hk_pool[riOTUs, ]
   size_factor = colSums(riOTUs_count)
   return(list(riOTUs_ID = riOTUs_ID, size_factor = size_factor))
+ }
 }

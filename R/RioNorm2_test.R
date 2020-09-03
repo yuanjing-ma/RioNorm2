@@ -25,12 +25,17 @@ RioNorm2_test <- function(OTU_table, class, FDR = 1) {
   ID_disp = scoretest$ID_disp
 
   # Step 3: apply "ZIP_test" function in the package to test differential abundance for non-overdispersed OTUs
+  if(length(ID_nondisp)>0){
   nondisp_OTU = OTU_table[ID_nondisp,]
   nondisp_res = ZIP_test(nondisp_OTU, class, log_sizefactor)
+  }else{
+  nondisp_res = NULL}
 
   # Step 4: apply "ZINB_test" function in the package to test differential abundance for overdispersed OTUs
+  if(length(ID_disp)>0){
   disp_OTU = OTU_table[ID_disp,]
   disp_res = ZINB_test(disp_OTU, class, log_sizefactor)
+  }else{disp_res = NULL}
 
   # combine test results from ZIP and ZINB
   combined_res = apply(cbind(disp_res, nondisp_res),1,unlist)
